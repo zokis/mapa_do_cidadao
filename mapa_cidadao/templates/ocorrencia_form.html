@@ -1,0 +1,65 @@
+{% extends 'base.html' %}{% load staticfiles %}{% load materialize %}{% load compress %}{% load user_agents %}
+{% block extra_css %}{% compress css %}<style type="text/css">
+    #tools{
+        font-size: 3em;
+    }
+    #tools > i{
+        -moz-border-radius: 50px;
+        -webkit-border-radius: 50px;
+        border-radius: 50px;
+    }
+</style>{% endcompress %}{% endblock extra_css %}
+{% block content %}
+    <div id="map"></div>
+    <div id="tools"></div>
+    {% if not request|is_mobile %}<a id="locate" title="Localizar" href="#">
+        <i class="mdi-device-gps-fixed"></i>
+    </a>{% endif %}
+    <div id="form-overlay" style="left:45;top:0;">
+        <center>
+            <h4>
+                {% if form.instance.pk %}Editar{% else %}Nova{% endif %} Ocorrência
+            </h4>
+        </center>
+        <div id="mc_mover_form" class="mc_mover_form">
+            <i class="mdi-action-open-with"></i>
+        </div>
+        <hr>
+        <form method="POST">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-block alert-error">
+                {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+                </div>
+            {% endif %}
+            {{ form.categoria|as_material:"s12" }}
+            {{ form.titulo|as_material:"s12" }}
+            {{ form.descricao|as_material:"s12" }}
+            {{ form.ponto }}
+            <button class="btn waves-effect waves-light" type="submit" name="action">
+              Salvar Ocorrência
+              <i class="mdi-content-send right"></i>
+            </button>
+        </form>
+    </div>
+{% endblock content %}
+{% block extra_js %}<script type="text/javascript">var geom = '{{ geom }}';</script>
+{% compress js %}
+<script type="text/javascript">
+$(document).ready(function(){
+    init();
+    load_cidade_geom();
+    mapa_cidadao_draw_component(geom, '#tools');
+    if(geom){
+        geom = wkt.read(geom);
+        map.setCenter(geom.geometry.getBounds().getCenterLonLat(), 15);
+    }
+    $('#mc_mover_form').mover_h('#form-overlay');
+    $('#mc_mover_form').mover_v('#form-overlay');
+    map_height();
+    $(window).resize(map_height);
+    init_geolocate();
+});
+</script>{% endcompress %}{% endblock extra_js %}

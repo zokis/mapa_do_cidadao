@@ -1,0 +1,159 @@
+{% load staticfiles %}{% load materialize %}{% load user_agents %}{% load compress %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
+  <title>Mapa do Cidadão{% if title %} - {{ title }}{% endif %}</title>
+  <!-- Seo -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta charset="utf-8">
+  
+  <meta name="author" content="Marcelo Fonseca Tambalo">
+  <meta name="description" content="">
+  <meta name="keywords" content="">
+  <meta name="robots" content="index,follow">
+
+  <!-- CSS  -->
+  {% compress css %}
+  <link href="{% static 'css/materialize.css' %}" type="text/css" rel="stylesheet" media="screen,projection">
+  <link href="{% static 'css/project.css' %}" type="text/css" rel="stylesheet" media="screen,projection">
+  {% endcompress %}
+  {% block extra_css %}{% if request|is_mobile %}
+  <style type="text/css">.PopUpMC{font-size: 24px}</style>
+  {% endif %}{% endblock extra_css %}
+</head>
+<body>
+  <ul id='drop-more' class='dropdown-content'>
+    <li><a href="{% url 'contact' %}">Contato</a></li>
+    <li><a href="{% url 'about' %}">Sobre</a></li>
+  </ul>
+  <nav>
+    <div class="nav-wrapper blue">
+      <div class="col s12">
+        <a href="/" class="brand-logo">. <i class="mdi-maps-map"></i> Mapa do Cidadão</a>
+        <ul id="slide-out" class="side-nav">
+          <li><a href="{% url 'estatisticas' %}"><i class="mdi-action-trending-up left"></i>Estatísticas</a></li>
+          {% if user.is_anonymous %}
+            <li>
+              <a href="{% url 'socialauth_begin' 'facebook' %}">
+                <i class="mdi-social-public left"></i> Login
+              </a>
+            </li>
+          {% else %}
+            <li>
+              <a href="{% url 'ocorrencia_list' %}" class="navbar-link">
+                <i class="mdi-action-view-list left"></i>Minhas Ocorrências
+              </a>
+            </li>
+            <li>
+              <a href="{% url 'logout' %}" class="navbar-link">
+                <i class="mdi-action-exit-to-app left"></i>Sair
+              </a>
+            </li>
+          {% endif %}
+          <li><a href="{% url 'contact' %}"><i class="mdi-content-mail left"></i> Contato</a></li>
+          <li><a href="{% url 'about' %}"><i class="mdi-action-info-outline left"></i> Sobre</a></li>
+        </ul>
+        <ul class="right hide-on-med-and-down">
+          {% if search_form %}
+          <li><a href="#" id="toggle-search"><i class="mdi-action-search left"></i>Busca</a></li>
+          {% endif %}
+          <li><a href="{% url 'estatisticas' %}"><i class="mdi-action-trending-up left"></i>Estatísticas</a></li>
+          {% if user.is_anonymous %}
+          <li><a href="{% url 'socialauth_begin' 'facebook' %}"><i class="mdi-social-public left"></i> Login com o Facebook</a></li>
+          {% else %}
+          <li><a href="{% url 'ocorrencia_list' %}" class="navbar-link"><i class="mdi-action-view-list left"></i>Minhas Ocorrências</a></li>
+          <li><a href="{% url 'logout' %}" class="navbar-link"><i class="mdi-action-exit-to-app left"></i>Sair</a></li>
+          {% endif %}
+          <li><a class="dropdown-button" href="#" data-activates="drop-more"><i class="mdi-navigation-arrow-drop-down"></i></a></li>
+        </ul>
+        <a href="#" data-activates="slide-out" class="button-collapse"><i class="mdi-navigation-menu"></i></a>
+      </div>
+    </div>
+  </nav>
+  {% if not request|is_mobile %}{% if search_form %}
+  <div class="row blue darken-3" id="search">
+    <div class="container">
+      <form method="POST">
+        {% csrf_token %}
+        <div class="row">
+          {{ search_form.categoria|as_material }}
+          {{ search_form.status|as_material }}
+        </div>
+        <div class="row">
+          {{ search_form.data_ini|as_material }}
+          {{ search_form.data_fim|as_material }}
+        </div>
+        <div class="row">
+          <div class="col s12">
+            <button class="btn waves-effect waves-light" type="submit" name="action">Buscar
+              <i class="mdi-content-send right"></i>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}{% endif %}
+  <div class="row" id="max-heigth">
+    <div class="col s12">
+      {% block content %}{% endblock content %}
+    </div>
+  </div>
+
+<script src="http://code.jquery.com/jquery-latest.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/openlayers/2.13.1/OpenLayers.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/openlayers/2.13.1/lib/OpenLayers/Lang/pt-BR.js"></script>
+{% compress js %}<script src="{% static "js/materialize.min.js" %}"></script>
+<script src="{% static "js/project.js" %}"></script>
+<script src="{% static "js/gis.js" %}"></script>{% endcompress %}
+{% block extra_js %}<script type="text/javascript">
+function load_ocorrencias() {
+  var bbox = map.getExtent().toArray();
+  var layer_name = "Ocorrências";
+  remove_layer_by_name(map, layer_name);
+  var ocorrencia_layer = new OpenLayers.Layer.Vector(layer_name);
+  var ocorrencias_features = [];
+  $.getJSON(
+    "{% url 'load_ocorrencias' %}" + bbox[0] +
+    "/" + bbox[1] + "/" + bbox[2] + "/" + bbox[3] + "/", {
+    "categoria": "{{ params.categoria|default:'' }}",
+    "status": "{{ params.status|default:'' }}",
+    "data_fim": "{{ params.data_fim|default:'' }}",
+    "action": "{{ params.action|default:'' }}",
+    "csrfmiddlewaretoken": "{{ params.csrfmiddlewaretoken|default:'' }}",
+    "data_ini": "{{ params.data_ini|default:'' }}",
+  }).done(function (data) {
+    $.each(data, function (i, item) {
+      var feature = wkt.read(item.wkt);
+      feature.attributes.name = item.name;
+      feature.attributes.pk = item.pk;
+      feature.attributes.description = item.description;
+      feature.style = item.style;
+      ocorrencias_features.push(feature);
+      ocorrencia_layer.addFeatures(ocorrencias_features);
+      ocorrencia_layer.events.register('featureclick', ocorrencia_layer, feature_click);
+      ocorrencia_layer.events.register('nofeatureclick', ocorrencia_layer, popup_clear);
+      map.addLayer(ocorrencia_layer);
+    });
+  });
+}
+</script>
+{% compress js %}<script type="text/javascript">
+$(document).ready(function () {
+  init();
+  load_cidade_geom();
+  load_ocorrencias();
+  map_height();
+  map.events.register("moveend", map, function (){
+    load_ocorrencias();
+    change_hash();
+  });
+  $(window).resize(map_height);
+  set_center_if_hash();
+  init_geolocate();
+});
+</script>{% endcompress %}{% endblock extra_js %}
+</body>
+</html>
